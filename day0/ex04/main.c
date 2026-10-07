@@ -1,6 +1,12 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
+
+// 0b00001111 > 0b00010111
+uint8_t bin_to_board(uint8_t num) {
+
+    return (num & 0b00000111) | ((num & 0b00001000) << 1);
+}
 // LED0 = PB0
 // SW1 = PD2
 
@@ -42,10 +48,4 @@ int main(void)
         button2_idle = PIND & (1 << PD4);
         _delay_ms(50);
     }
-}
-
-// 0b00001111 > 0b00010111
-uint8_t bin_to_board(uint8_t num) {
-
-    return (num & 0b00000111) | ((num & 0b00001000) << 1);
 }
