@@ -84,7 +84,7 @@ clear:
 	clear
 
 clean:
-	for dir in $$(echo day0/ex0*); do \
+	for dir in $$(echo day*/ex0*); do \
 		make -C $$dir clean; \
 	done
 
