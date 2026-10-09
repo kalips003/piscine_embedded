@@ -1,37 +1,25 @@
 #include <avr/io.h>
 
-#define STOP_VALUE 31249
-/*
-    TCCR1B = starting the timer + what % mode (3 least bit) + mode control
-    OCR1A = stopping 
-    COMIA10 != 0; timer takes over PB1 (toogle)
-*/
+#define STOP_VALUE ((F_CPU / 256 / 2) - 1) // = 31249
+
 int main(void)
 {
-    DDRB |= (1 << PB1);
-    OCR1A = STOP_VALUE;
-    TCCR1A = (1 << COM1A0);
-    TCCR1B = (1 << WGM12) | (1 << CS12);
+// set PB1 output
+    DDRB |= (1 << PB1); 
+
+// set compare value (~0.5s)
+    OCR1A = STOP_VALUE; 
+
+// CompareMatchOUtput COM [01]: Toggle OC1A (PB1) on Compare Match
+    TCCR1A = (0 << COM1A1) | (1 << COM1A0);
+
+// set WaveformGenerationMode WGM [0100]:
+    // mode: CTC; TOP: OCR1A; update: Immediate; TOV1 flag on:  MAX
+    TCCR1B = (0 << WGM13) | (1 << WGM12);
+    // TCCR1A = (0 << WGM11) | (0 << WGM10);
+
+// set ClockSelect CS % 256: [100] & start the timer
+    TCCR1B |= (1 << CS12) |  (0 << CS11) |  (0 << CS10);
 
     while (1) {}
 }
-
-
-/*
-
-On every match, the hardware always sets a flag: a bit that goes to 1 in 
-    the TIFR1 register (OCF1A for a match with A, OCF1B for B). 
-    That's just a note saying "a match happened".
-
-It becomes a real interrupt, where the CPU stops what it's doing and 
-    runs your function, only if you enable it. 
-    The enable bit is OCIE1A in TIMSK1, and interrupts must also 
-    be turned on globally with sei().
-
-1	DDRB	bit PB1 = 1	Pin as output, or nothing comes out
-2	OCR1A	31249	Compare value: end of the cycle in CTC
-3	TCCR1A	COM1A0 = 1 (COM1A1 = 0)	Timer takes over PB1 and toggles it on each match
-4	TCCR1B	WGM12 = 1 (bit 3)	CTC mode
-4	TCCR1B	CS bits (0–2) = [100]	÷256
-
-*/

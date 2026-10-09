@@ -46,3 +46,16 @@ The important pieces we'll determine are:
 -P ... → which USB/serial port
 -b 115200 → baud rate
 -U flash:w:main.hex → write main.hex to flash
+
+# 5 GDB: simavr
+avr-gcc -mmcu=atmega328p -g main.c -o main.elf
+simavr -m atmega328p -g main.elf              
+  Loaded 1374 bytes of Flash data at 0
+  avr_gdb_init listening on port 1234
+
+## on second terminal:
+avr-gdb main.elf
+(gdb) target remote :1234
+(gdb) load
+(gdb) break main
+(gdb) continue

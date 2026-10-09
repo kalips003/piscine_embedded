@@ -32,12 +32,14 @@ all: clear hex flash
 # │─██████████████─██████████████─██████████████─██████──██████████─██████████████─██████████████─██████████████─│
 # ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
+F_CPU = 16000000UL
+CHIP = atmega328p
 # compile main.c > main.bin (bin for the AVR/Amega326p)
 # compile main.bin > main.hex (intel HEX)
 # -O ihex → output format = Intel HEX
 hex: main.c
 	@$(call random_shmol_cat, ... , binning?, $(CLS), );
-	avr-gcc -mmcu=atmega328p -DF_CPU=16000000UL -g main.c -o main.bin
+	avr-gcc -mmcu=$(CHIP) -DF_CPU=$(F_CPU) -g main.c -o main.bin
 	@$(call random_shmol_cat, ... , hexing!, $(CLS), );
 	avr-objcopy -O ihex main.bin main.hex
 
