@@ -17,6 +17,9 @@ all: clear hex flash
 # │─────██████─────██████████████─██████████████─────██████─────██████████─██████──────────██████─██████████████─│
 # ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
+#  ctrl a + k + yes
+read:
+	screen /dev/ttyUSB0 115200
 
 # ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 # │─██████████████─██████████████─██████──██████─████████████████───██████████████─██████████████─██████████████─│
@@ -34,12 +37,44 @@ all: clear hex flash
 
 F_CPU = 16000000UL
 CHIP = atmega328p
+
+SRC_DIR = src
+OBJ_DIR = $(SRC_DIR)/obj
+
+# main.c + every .c under src/ (any depth), skipping src/obj/
+SRC = main.c $(shell find $(SRC_DIR) -name '*.c' -not -path '$(OBJ_DIR)/*' 2>/dev/null)
+# main.c -> src/obj/main.o | src/uart/uart.c -> src/obj/uart/uart.o
+OBJ = $(patsubst %.c,$(OBJ_DIR)/%.o,$(patsubst $(SRC_DIR)/%,%,$(SRC)))
+DEP = $(OBJ:.o=.d)
+
+# every folder containing a .h becomes a -I (so #include "uart.h" works from anywhere)
+HEADER = $(shell find . -name '*.h' -not -path './$(OBJ_DIR)/*')
+INC = $(addprefix -I,$(sort $(dir $(HEADER))))
+
+# -MMD -MP: gcc writes a .d per .o listing the headers it actually includes,
+# so editing a header only rebuilds the files that use it
+FLAGS = -Wall -Werror -Wextra -mmcu=$(CHIP) -DF_CPU=$(F_CPU) -Os $(INC) -MMD -MP
+
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(@D)
+	avr-gcc $(FLAGS) -c $< -o $@
+
+$(OBJ_DIR)/%.o: %.c
+	@mkdir -p $(@D)
+	avr-gcc $(FLAGS) -c $< -o $@
+
+-include $(DEP)
+
 # compile main.c > main.bin (bin for the AVR/Amega326p)
 # compile main.bin > main.hex (intel HEX)
 # -O ihex → output format = Intel HEX
-hex: main.c
+hex: main.hex
+
+main.bin: $(OBJ)
 	@$(call random_shmol_cat, ... , binning?, $(CLS), );
-	avr-gcc -mmcu=$(CHIP) -DF_CPU=$(F_CPU) -g main.c -o main.bin
+	avr-gcc -mmcu=$(CHIP) -DF_CPU=$(F_CPU) -g $(OBJ) -o main.bin
+
+main.hex: main.bin
 	@$(call random_shmol_cat, ... , hexing!, $(CLS), );
 	avr-objcopy -O ihex main.bin main.hex
 
@@ -86,10 +121,11 @@ clear:
 	clear
 
 clean:
-	rm -f main.bin main.hex
+	rm -rf $(OBJ_DIR)
 
 fclean: clean
-	
+	rm -f *.bin *.hex
+
 
 re: fclean all
 

@@ -11,7 +11,7 @@ int main(void)
 //  set write / read
     DDRB |=  (1 << PB0);    // PB0 = output (LED D1)
     DDRD &= ~(1 << PD2);    // PD2 = input  (button SW1)
- 
+
 //  current state of the button
     int button_status = PIND & (1 << PD2);
 

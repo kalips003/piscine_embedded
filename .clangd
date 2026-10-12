@@ -1,0 +1,13 @@
+CompileFlags:
+  Add:
+    - --target=avr
+    - -mmcu=atmega328p
+    - -DF_CPU=16000000UL
+    - -I/usr/avr/include
+    - -isystem/usr/lib/gcc/avr/16.1.0/include
+---
+# without a compile database clangd parses .h files as C++, where _Bool doesn't exist
+If:
+  PathMatch: .*\.h
+CompileFlags:
+  Add: [-xc-header]
