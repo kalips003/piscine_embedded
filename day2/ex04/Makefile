@@ -18,8 +18,8 @@ all: clear hex flash
 # ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 
 #  ctrl a + k + yes
-read:
-	screen /dev/ttyUSB0 115200
+read: all
+	screen $(BOARD) 115200
 
 USER = mama
 PASSWORD = bibi
@@ -126,6 +126,7 @@ clear:
 	clear
 
 clean:
+	@$(call random_shmol_cat, All clean mashter! , $(CLS), );
 	rm -rf $(OBJ_DIR) *.bin *.hex
 
 re: fclean all

@@ -21,8 +21,6 @@ uint8_t g_is_username_correct;
 and makes the LEDs blink                                                        */
 
 /////////////////////////////////////////////////////////////////////////////]
-
-// ! A FAIRE • The Backspace key deletes a character.
 int main( void )
 {
     uart_init();

@@ -1,7 +1,19 @@
 NAME = 
 
-all: clear hex flash
-	@$(call random_shmol_cat, ... , all done?, $(CLS), );
+all: 
+	@$(call random_shmol_cat, ... , nothing to do?, $(CLS), );
+
+# f_d=$${rule:0:1}; s_d=$${rule:1:1};
+%:
+	@rule=$@; \
+	if echo $$rule | grep -qE '^[0-9][0-9]$$'; then \
+		f_d=$$(echo $$rule | cut -c1); s_d=$$(echo $$rule | cut -c2); \
+		$(call random_shmol_cat, "teshting ... CPP$$f_d: exo $$s_d", 'hav fun ね?', $(CLS), ); \
+		make -C day$$f_d/ex0$$s_d all; \
+	else \
+		$(call random_shmol_cat, "Error! $@ isnt a valable exo", 'Bad Miaou', $(CLS), ); \
+		exit 1; \
+	fi
 
 # ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 # │─██████████████─██████████████─██████████████─██████████████─██████████─██████──────────██████─██████████████─│

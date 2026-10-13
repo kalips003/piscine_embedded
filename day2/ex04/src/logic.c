@@ -63,7 +63,7 @@ int get_input( const char* msg, uint8_t mode )
     uart_printstr(msg);
 
     char c;
-    for (int i = 0; i < SIZE_MAX_BUFFER_INTPUT; ++i) 
+    for (int i = 0; i < SIZE_MAX_BUFFER_INTPUT - 1; ++i) 
     {
         c = uart_rx();
         if (c == '\n' || c == '\r')
@@ -77,6 +77,15 @@ int get_input( const char* msg, uint8_t mode )
             uart_printstr("\r\n");
             g_input_buffer[i] = '\0';
             return 0; /* 0x00 = user sent NUL (ctrl+@) or a line break condition; real rx errors are in UCSR0A */
+        }
+        else if (c == 0x7F) /* || c == '\b' */
+        {
+            if (i > 0)
+            {
+                --i;
+                uart_printstr("\b \b");
+            }
+            continue;
         }
         g_input_buffer[i] = c;
         if (!mode)
