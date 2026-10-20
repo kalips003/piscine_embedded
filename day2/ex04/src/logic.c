@@ -63,7 +63,8 @@ int get_input( const char* msg, uint8_t mode )
     uart_printstr(msg);
 
     char c;
-    for (int i = 0; i < SIZE_MAX_BUFFER_INTPUT - 1; ++i) 
+    uint8_t i = 0;
+    while (i < SIZE_MAX_BUFFER_INTPUT - 1) 
     {
         c = uart_rx();
         if (c == '\n' || c == '\r')
@@ -87,7 +88,7 @@ int get_input( const char* msg, uint8_t mode )
             }
             continue;
         }
-        g_input_buffer[i] = c;
+        g_input_buffer[i++] = c;
         if (!mode)
             uart_tx(c);
         else

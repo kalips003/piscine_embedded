@@ -11,7 +11,7 @@
     #define USER "bibi"
 #endif
 
-#define SIZE_MAX_BUFFER_INTPUT 20
+#define SIZE_MAX_BUFFER_INTPUT 9
 
 // defined in main.c
 extern char    g_input_buffer[SIZE_MAX_BUFFER_INTPUT];

@@ -4,7 +4,6 @@
 
 // #include <stdint.h>
 #include <stdint.h>
-#include <string.h>
 
 char    g_input_buffer[SIZE_MAX_BUFFER_INTPUT];
 uint8_t g_is_username_correct;

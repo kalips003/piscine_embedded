@@ -1,6 +1,6 @@
 #pragma once
 
-/* Refer to UART.md */
+/* view uart_block_diagram.png */
 
 #include <avr/io.h>
 
@@ -15,110 +15,114 @@
 #endif
 
 
-/////////////////////////////////////////////////////////////////////////////]
-
-
 void uart_init( void );
 void uart_tx(char c);
+void uart_printstr(const char* str);
 char uart_rx( void );
 
 
-/*/////////////////////////////////////////////////////////////////////////////]
-UART = Universal Asynchronous Receiver Transmitter.
-    2 wires, one per direction: TX (what I send) and RX (what I receive).
-    They are crossed: my TX goes to the other side's RX, and the other way around.
-    On the ATmega328P: TXD0 = PD1, RXD0 = PD0
-        (on the board they go to the USB-serial chip -> /dev/ttyUSB0 on the PC)
+#define ENABLE_UART do { \
+            UDR0 = 0; /* READ / WRITE BUFFER */ \
+            UBRR0 = UART_BAUDRATE; /* + FORMULA */ \
+            UCSR0B[TXEN0] = 1; /* ENABLE TRANSMITING */ \
+            UCSR0B[RXEN0] = 1; /* ENABLE RECIEVEING */ \
+            UCSR0C = 0; /* dont touch, default already 8N1 */ \
+        } while (0)
 
-"Asynchronous" = there is no clock wire. Both sides just agree beforehand on:
-    - the speed (baud rate = bits per second, ex 115200)
-    - the frame format (ex 8N1 = 8 data bits, No parity, 1 stop bit)
-    If they don't agree, you receive garbage, not nothing.
 
-The line stays HIGH when nothing happens (idle). One frame (8N1) looks like:
+/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////]
+    # USART I/O Data Register 0
+----------------------------------------------------------------
+[UDR0] : RXB7 - RXB6 - RXB5 - RXB4 - RXB3 - RXB2 - RXB1 - RXB0
+----------------------------------------------------------------
+	Holds the data byte. Writing sends a byte (transmit buffer), reading gets
+	the received byte (receive buffer). One address, two separate buffers.
 
-    idle  start  b0  b1  b2  b3  b4  b5  b6  b7  stop  idle
-    ‾‾‾‾‾‾|____|‾‾‾‾|___|‾‾‾|___|___|‾‾‾|___|‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-           0     \______ data, LSB first ______/   1
-
-    - start bit (always 0): the falling edge tells the receiver "a byte is coming",
-        it starts its own timer and samples each bit in its middle
-    - data bits: LSB first ('A' = 0x41 = 0b01000001 is sent 1,0,0,0,0,0,1,0)
-    - parity bit (optional): an extra bit so the number of 1s is even (or odd)
-    - stop bit(s) (always 1): back to idle, gives time before the next start bit
-    So 1 byte = 10 bits on the wire: at 115200 baud, ~11520 bytes/s, ~87us per byte.
-
-The USART0 hardware does all of this alone. You only:
-    - write a byte into UDR0 -> it gets shifted out on TX
-    - read a byte from UDR0  -> the last byte that arrived on RX
-    (UDR0 is 2 registers behind one name: a TX buffer when written, a RX buffer when read)
+* TXB/RXB[7:0] : the 8 data bits of the byte being sent or received
 *//////////////////////////////////////////////////////////////////////////////]
 
 
-/////////////////////////////////////////////////////////////////////////////]
-/*/ USART Baud Rate Register: UBRR0[11:0] (UBRR0H[3:0] + UBRR0L[7:0], or UBRR0 directly [0:4095])
-    The USART divides F_CPU to get its bit timing.
- - normal speed (U2X0 = 0): UBRR0 = F_CPU / (16 * baud) - 1
- - double speed (U2X0 = 1): UBRR0 = F_CPU / (8 * baud) - 1                      */
-// UBRR0 is an integer, so the real baud is never exact:
-//      real_baud = F_CPU / (16 or 8 * (UBRR0 + 1))
-//      error     = real_baud / wanted_baud - 1
-// at 16 MHz:
-//      baud    | normal: UBRR  real    error  | double: UBRR  real    error
-//      9600    |        103   9615    +0.2%   |        207   9615    +0.2%
-//      57600   |         16  58824    +2.1%   |         34  57143    -0.8%
-//      115200  |          8 111111    -3.5%   |         16 117647    +2.1%
-// For 8N1 the datasheet recommends staying within about ±2%: so 115200 at 16 MHz
-//      only works (barely) in double speed. That's why we set U2X0.
+
+/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////]
+    # USART Baud Rate Register 0 High
+----------------------------------------------------------------
+[UBRR0]: 12-bit baud rate value = [UBRR0H]3:0 = UBRR0[11:8] + [UBRR0L]7:0 UBRR0[7:0]
+----------------------------------------------------------------
+	! writing UBRR0L updates the baud rate immediately.
+
+	Normal async: UBRR = F_CPU / (16 × baud) − 1
+	Double async: UBRR = F_CPU / (8 × baud) − 1
+*//////////////////////////////////////////////////////////////////////////////]
+    // BAUD = F_CPU / (16 * (UBRR0 + 1));
+    // UBRR0 = F_CPU / (16 * BAUD) - 1;
+    // err = (115200 - BAUD) * 100 / 115200;
+//  for : 115200 
+// > 16*(8+1) = 111111 (-3.5%)
+// > 8*(16+1) = 117647 (+2.1%)
+#define BAUD_115200 16
+
+// For 8N1 the datasheet recommends staying within about ±2%
 // The (+ half the divisor) rounds to the nearest instead of truncating (16.36 -> 16, 7.68 -> 8)
 #define UBRR_NORMAL(baud) ((F_CPU + 8UL * (baud)) / (16UL * (baud)) - 1)
 #define UBRR_DOUBLE(baud) ((F_CPU + 4UL * (baud)) / (8UL * (baud)) - 1)
 
-#define SET_BAUDRATE_DOUBLE(baud) do { UCSR0A |= _BV(U2X0); UBRR0 = UBRR_DOUBLE(baud); } while (0)
-#define SET_BAUDRATE_NORMAL(baud) do { UCSR0A &= ~_BV(U2X0); UBRR0 = UBRR_NORMAL(baud); } while (0)
+// set correct baud rate in UBRR0, and set speed in U2X0
+#define SET_BAUDRATE_DOUBLE(baud) do { SET_PIN(UCSR0A, U2X0); UBRR0 = UBRR_DOUBLE(baud); } while (0)
+#define SET_BAUDRATE_NORMAL(baud) do { UNSET_PIN(UCSR0A, U2X0); UBRR0 = UBRR_NORMAL(baud); } while (0)
 
-// set correct baud rate in UBRR0, and set double speed
-#define BAUD_RATE_115200 do { SET_PIN(UCSR0A, U2X0); UBRR0 = UBRR_DOUBLE(UART_BAUDRATE); } while (0)
 
-/////////////////////////////////////////////////////////////////////////////]
-/*/ Status: UCSR0A: USART control and status register A/B/C
-// bit:    7      6      5      4     3      2      1      0
-//       [ RXC0 | TXC0 | UDRE0 | FE0 | DOR0 | UPE0 | U2X0 | MPCM0 ]
- - RXC0:  Receive Complete: 1 = an unread byte is waiting in UDR0
-            (cleared by reading UDR0)
- - TXC0:  Transmit Complete: 1 = everything is out, stop bit included, nothing left to send
-            (cleared by its ISR, or by writing a 1 to it)
- - UDRE0: Data Register Empty: 1 = UDR0 can take a new byte
-            (the previous one may still be shifting out, that's fine: it's double buffered)
- - FE0:   Frame Error: the stop bit of the received byte was 0 (wrong baud / format?)
- - DOR0:  Data OverRun: a byte was lost, you didn't read UDR0 fast enough
- - UPE0:  Parity Error: the received parity bit doesn't match
- - U2X0:  Double speed (see baud rate above), the only bit here you set yourself
- - MPCM0: Multi-processor mode (ignore frames that are not addresses), leave it at 0  */
-// FE0 / DOR0 / UPE0 are about the byte currently in UDR0: read them BEFORE reading UDR0.
-// UDRE0 vs TXC0: UDRE0 = "I can give it another byte", TXC0 = "the line is quiet again"
-#define UART_CAN_SEND    (UCSR0A & _BV(UDRE0))
-#define UART_BUSY       !(UCSR0A & _BV(UDRE0))
+
+/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////]
+    # USART Control And Status Register 0 A
+----------------------------------------------------------------------------
+[UCSR0A] : RXC0 - TXC0 - UDRE0 - FE0 - DOR0 - UPE0 - U2X0 - MPCM0
+----------------------------------------------------------------------------
+	Mostly status flags: data received, transmission done, buffer ready,
+	and the error flags. Plus two mode bits (U2X0, MPCM0).
+
+* RXC0  : Receive Complete, set when there is an unread byte in UDR0
+* TXC0  : Transmit Complete, set when the whole frame has been shifted out and
+          the buffer is empty. Cleared by writing 1 to it or when its interrupt runs
+* UDRE0 : Data Register Empty, set when UDR0 can accept a new byte to send
+* (FE0) : Frame Error, the stop bit of the received byte was 0 (often a wrong baud rate)
+* (DOR0): Data OverRun, a byte was lost because the receive buffer was full
+* (UPE0): USART Parity Error, the received byte failed the parity check
+* U2X0  : Double Speed, async only. Divides by 8 instead of 16, doubling the speed
+* MPCM0 : Multi-processor Communication Mode, ignores frames that are not addresses
+*//////////////////////////////////////////////////////////////////////////////]
+
+// RXC0: set when receive something
 #define UART_HAS_DATA    (UCSR0A & _BV(RXC0))
-#define UART_SENT        (UCSR0A & _BV(TXC0))
-#define UART_RX_ERROR    (UCSR0A & (_BV(FE0)|_BV(DOR0)|_BV(UPE0)))
-
-#define UART_WAIT_SEND   do { } while (!UART_CAN_SEND)
 #define UART_WAIT_DATA   do { } while (!UART_HAS_DATA)
+// UDRE0: set when transmit finished
+#define UART_CAN_SEND    (UCSR0A & _BV(UDRE0))
+#define UART_WAIT_SEND   do { } while (!UART_CAN_SEND)
+// RXC0: set when transmit finished, connection can close
+#define UART_SENT        (UCSR0A & _BV(TXC0))
+
+#define UART_SOME_ERR_HAPPENED (UCSR0A & (_BV(FE0)|_BV(DOR0)|_BV(UPE0)))
 
 
-/////////////////////////////////////////////////////////////////////////////]
-/*/ Control: UCSR0B: USART control and status register B
-// bit:    7        6        5        4       3       2        1       0
-//       [ RXCIE0 | TXCIE0 | UDRIE0 | RXEN0 | TXEN0 | UCSZ02 | RXB80 | TXB80 ]
- - RXCIE0 / TXCIE0 / UDRIE0: interrupt enables, see interrupt2.h (UART_xx_INT_ON/OFF)
- - RXEN0: Receiver enable: PD0 stops being a normal pin, it becomes RXD
- - TXEN0: Transmitter enable: PD1 stops being a normal pin, it becomes TXD
-            (no need to touch DDRD, the USART takes over the pin)
- - UCSZ02: 3rd bit of the character size (see UCSR0C), only 1 for 9-bit frames
- - RXB80 / TXB80: the 9th data bit in 9-bit mode (read RXB80 before UDR0)          */
 
-/* TXEN0: Transmitter enable: PD1 stops being a normal pin, it becomes TXD */
+/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////]
+USART Control And Status Register 0 B
+----------------------------------------------------------------------------
+[UCSR0B] : RXCIE0 - TXCIE0 - UDRIE0 - RXEN0 - TXEN0 - UCSZ02 - RXB80 - TXB80
+----------------------------------------------------------------------------
+	Turns the receiver/transmitter and their interrupts on or off.
+	Also holds the 9th data bit when using 9-bit frames.
+
+* RXCIE0 : RX Complete Interrupt Enable, interrupt when a byte is received (RXC0)
+* TXCIE0 : TX Complete Interrupt Enable, interrupt when transmission is done (TXC0)
+* UDRIE0 : Data Register Empty Interrupt Enable, interrupt when UDR0 is ready (UDRE0)
+* RXEN0  : Receiver Enable, turns on the receiver, RXD0 pin becomes the input
+* TXEN0  : Transmitter Enable, turns on the transmitter, TXD0 pin becomes the output
+*(UCSZ02): Character Size bit 2, combined with UCSZ01:00 in UCSR0C (1 = 9-bit mode)
+* RXB80  : Receive Data Bit 8, the 9th bit received. Read it BEFORE UDR0
+* TXB80  : Transmit Data Bit 8, the 9th bit to send. Write it BEFORE UDR0
+*//////////////////////////////////////////////////////////////////////////////]
+
+// TXEN0: Transmitter enable: PD1 stops being a normal pin, it becomes TXD
 #define UART_TX_ON   (UCSR0B |= _BV(TXEN0))
 #define UART_TX_OFF  (UCSR0B &= ~_BV(TXEN0))
 // RXEN0: Receiver enable: PD0 stops being a normal pin, it becomes RXD
@@ -126,51 +130,48 @@ The USART0 hardware does all of this alone. You only:
 #define UART_RX_OFF  (UCSR0B &= ~_BV(RXEN0))
 
 
-/////////////////////////////////////////////////////////////////////////////]
-/*/ Frame format: UCSR0C: USART control and status register C
-// bit:    7         6         5       4       3       2        1        0
-//       [ UMSEL01 | UMSEL00 | UPM01 | UPM00 | USBS0 | UCSZ01 | UCSZ00 | UCPOL0 ]
-// After reset UCSR0C = 0b00000110 = asynchronous 8N1: already what we want.     */
 
-/*/ Set UsartModeSelect UMSEL (UCSR0C[7:6])
- - [00]: Asynchronous USART (normal UART, no clock wire)
- - [01]: Synchronous USART (clock on XCK0 = PD4)
- - [10]: Reserved
- - [11]: Master SPI (MSPIM)                                                     */
+/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////]
+USART Control And Status Register 0 C
+----------------------------------------------------------------------------
+[UCSR0C] : UMSEL01 - UMSEL00 - UPM01 - UPM00 - USBS0 - UCSZ01 - UCSZ00 - UCPOL0
+----------------------------------------------------------------------------
+	Sets the frame format: mode, parity, stop bits and data size.
+
+* UMSEL0[1:0]: USART Mode Select
+               [00] = asynchronous, [01] = synchronous, [10] = reserved, [11] = Master SPI
+* UPM0[1:0]  : Parity Mode
+               [00] = disabled, [01] = reserved, [10] = even, [11] = odd
+* USBS0      : Stop Bit Select, [0] = 1 stop bit, [1] = 2 stop bits
+* UCSZ0[1:0]: Character Size, together with UCSZ02
+               [000] = 5 bits, [001] = 6, [010] = 7, [011] = 8, [111] = 9
+* UCPOL0     : Clock Polarity, sync mode only. Picks which XCK0 edge
+               sends and samples data. Write 0 in async mode
+
+The default after reset (UCSR0C = 0x06 [0b0110]) is already the classic 8N1: async, no parity, 1 stop bit, 8 data bits
+*//////////////////////////////////////////////////////////////////////////////]
+
+// Set UsartModeSelect UMSEL (UCSR0C[7:6])
 #define SET_UMSEL(b1, b0) \
-    (UCSR0C = (UCSR0C & ~(_BV(UMSEL01)|_BV(UMSEL00)))|((b1<<UMSEL01)|(b0<<UMSEL00)))
+    (UCSR0C = (UCSR0C & ~(0b11000000)) | ((b1<<UMSEL01)|(b0<<UMSEL00)))
 
-/*/ Set UsartParityMode UPM (UCSR0C[5:4])
- - [00]: Disabled
- - [01]: Reserved
- - [10]: Even parity (total count of 1s, parity bit included, is even)
- - [11]: Odd parity                                                             */
+// Set UsartParityMode UPM (UCSR0C[5:4])
 // parity only detects 1 flipped bit, and only tells you (UPE0), it fixes nothing
 #define SET_UPM(b1, b0) \
-    (UCSR0C = (UCSR0C & ~(_BV(UPM01)|_BV(UPM00)))|((b1<<UPM01)|(b0<<UPM00)))
+    (UCSR0C = (UCSR0C & ~(0b00110000)) | ((b1<<UPM01)|(b0<<UPM00)))
 
-/*/ Set UsartStopBitSelect USBS (UCSR0C[3])
- - [0]: 1 stop bit
- - [1]: 2 stop bits (the receiver only checks the first one anyway)             */
+// Set UsartStopBitSelect USBS (UCSR0C[3])
 #define SET_USBS(b0) (UCSR0C = (UCSR0C & ~_BV(USBS0))|(b0<<USBS0))
 
-/*/ Set UsartCharacterSiZe UCSZ across UCSR0B[2] & UCSR0C[2:1]
- - [000]: 5-bit
- - [001]: 6-bit
- - [010]: 7-bit
- - [011]: 8-bit   <- the usual one
- - [100]: Reserved
- - [101]: Reserved
- - [110]: Reserved
- - [111]: 9-bit (9th bit in TXB80/RXB80)                                        */
+// Set UsartCharacterSiZe UCSZ across UCSR0B[2] & UCSR0C[2:1]
 #define SET_UCSZ(b2, b1, b0) do { \
             UCSR0B = (UCSR0B & ~_BV(UCSZ02))|(b2<<UCSZ02); \
             UCSR0C = (UCSR0C & ~(_BV(UCSZ01)|_BV(UCSZ00)))|((b1<<UCSZ01)|(b0<<UCSZ00)); \
         } while (0)
 
 // UCPOL0: clock polarity, synchronous mode only. Keep it 0 in asynchronous mode.
-
 #define SET_FRAME_8N1 do { SET_UMSEL(0,0); SET_UPM(0,0); SET_USBS(0); SET_UCSZ(0,1,1); } while (0)
+
 
 
 /*/////////////////////////////////////////////////////////////////////////////]
@@ -183,20 +184,4 @@ On the PC side:
     - screen doesn't echo what you type: if you want to see it, the MCU must send it back
     - backspace sends 127 (DEL) or 8 ('\b')
 
-Full example: 8N1 at 115200, then echo every received byte back.
-
-    int main(void)
-    {
-        SET_BAUDRATE_DOUBLE(UART_BAUDRATE);
-        SET_FRAME_8N1;
-        UART_TX_ON;
-        UART_RX_ON;
-        while (1)
-        {
-            UART_WAIT_DATA;         // wait for RXC0
-            char c = UDR0;          // read it (clears RXC0)
-            UART_WAIT_SEND;         // wait for UDRE0
-            UDR0 = c;               // send it back
-        }
-    }
 *//////////////////////////////////////////////////////////////////////////////]

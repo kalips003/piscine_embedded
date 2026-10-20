@@ -1,7 +1,8 @@
 NAME = 
 
-all: clear hex flash
-	@$(call random_shmol_cat, ... , all done?, $(CLS), );
+all: hex flash
+	@$(call random_shmol_cat, ... , all done?, , );
+	@make read
 
 # ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 # │─██████████████─██████████████─██████████████─██████████████─██████████─██████──────────██████─██████████████─│
@@ -19,7 +20,7 @@ all: clear hex flash
 
 #  ctrl a + k + yes
 read:
-	screen /dev/ttyUSB0 115200
+	screen $(BOARD) 115200
 
 # ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
 # │─██████████████─██████████████─██████──██████─████████████████───██████████████─██████████████─██████████████─│
@@ -57,11 +58,11 @@ FLAGS = -Wall -Werror -Wextra -mmcu=$(CHIP) -DF_CPU=$(F_CPU) -Os $(INC) -MMD -MP
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(@D)
-	avr-gcc $(FLAGS) -c $< -o $@
+	@avr-gcc $(FLAGS) -c $< -o $@
 
 $(OBJ_DIR)/%.o: %.c
 	@mkdir -p $(@D)
-	avr-gcc $(FLAGS) -c $< -o $@
+	@avr-gcc $(FLAGS) -c $< -o $@
 
 -include $(DEP)
 
@@ -71,7 +72,7 @@ $(OBJ_DIR)/%.o: %.c
 hex: main.hex
 
 main.bin: $(OBJ)
-	@$(call random_shmol_cat, ... , binning?, $(CLS), );
+	@$(call random_shmol_cat, ... , binning?, , );
 	avr-gcc -mmcu=$(CHIP) -DF_CPU=$(F_CPU) -g $(OBJ) -o main.bin
 
 main.hex: main.bin
@@ -92,7 +93,7 @@ main.hex: main.bin
 BOARD = /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0
 
 flash: main.hex
-	@$(call random_shmol_cat, ... , flashin!!!, $(CLS), );
+	@$(call random_shmol_cat, ... , flashin!!!, , );
 	avrdude -p m328p -c arduino -P $(BOARD) -b 115200 -U flash:w:main.hex
 
 
@@ -117,19 +118,13 @@ git: fclean
 	git push
 
 
-clear:
-	clear
-
 clean:
-	rm -rf $(OBJ_DIR)
+	@$(call random_shmol_cat, all clean mashter! , $(CLS), );
+	rm -rf $(OBJ_DIR) *.bin *.hex
 
-fclean: clean
-	rm -f *.bin *.hex
+re: clean all
 
-
-re: fclean all
-
-.PHONY: all clean fclean re git hex flash clear
+.PHONY: all clean re git hex flash read
 
 
 # ╭────────────────────────────────────────────────────────────────────────────────────╮
@@ -183,6 +178,7 @@ endef
 
 # 	Define all 256 colors
 CLEAR = \033[2J\033[H
+CLS = \033[2J\033[H
 RESET = \033[0m
 BLINK = \033[5m
 

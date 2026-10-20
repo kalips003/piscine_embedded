@@ -5,15 +5,13 @@
 void uart_init( void )
 {
 // set correct baud rate in UBRR0, and set double speed
-    BAUD_RATE_115200;
+    SET_BAUDRATE_DOUBLE(UART_BAUDRATE);
 
 // UCSR0C: 8N1 mode: UMSEL0 [Asynchronous], UPM0 [parity disable], USBS0 [1 stop bit], UCSZ0 [011 = 8bit]
     SET_FRAME_8N1;
 
 /* TXEN0: Transmitter enable: PD1 stops being a normal pin, it becomes TXD */
     UART_TX_ON;
-// RXEN0: Receiver enable: PD0 stops being a normal pin, it becomes RXD
-    UART_RX_ON;
 }
 
 

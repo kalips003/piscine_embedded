@@ -7,7 +7,7 @@
 void USART_RX_vect(void) __attribute__((__signal__, __used__));
 void USART_RX_vect(void)
 {
-    uint8_t err = UART_RX_ERROR; // read error before UDR0, else you read the error of the next byte
+    uint8_t err = UART_SOME_ERR_HAPPENED; // read error before UDR0, else you read the error of the next byte
     char c = UDR0; // read register where the arrived char is stored
 
     if (err)

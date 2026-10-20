@@ -6,7 +6,7 @@
 void uart_init( void )
 {
 // set correct baud rate in UBRR0, and set double speed
-    BAUD_RATE_115200;
+    SET_BAUDRATE_DOUBLE(UART_BAUDRATE);
 
 // UCSR0C: 8N1 mode: UMSEL0 [Asynchronous], UPM0 [parity disable], USBS0 [1 stop bit], UCSZ0 [011 = 8bit]
     SET_FRAME_8N1;
@@ -30,6 +30,18 @@ void uart_tx(char c)
     UDR0 = c;
 }
 
+/////////////////////////////////////////////////////////////////////////////]
+void uart_printstr(const char* str)
+{
+    if (!str)
+        return ;
+    while (*str) {
+        uart_tx(*str);
+        str++;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////]
 /* read one char on the uart */
 char uart_rx( void )
 {
@@ -37,10 +49,11 @@ char uart_rx( void )
     uint8_t err;
 
     UART_WAIT_DATA;
-    err = UART_RX_ERROR;
+    // read error before UDR0
+    err = UART_SOME_ERR_HAPPENED; // FE0 || DOR0 is set
     c = UDR0;
 
-    if (err /* error case */)
+    if (err) /* error case while recieving, default to 0 */
         return '\0';
 
     return c;

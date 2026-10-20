@@ -30,9 +30,9 @@ void timer_init_2s( void ) {
 
     OCR1A = STOP_2S;
 // set WGM mode 4: CTC, TOP=OCR1A, update: immediate, TOP
-    SET_WGM(0,1,0,0);
+    T1_SET_WGM(0,1,0,0);
 // prescaler 1024, start the timer
-    SET_CS_PRESCALER_1024;
+    T1_SET_CS(1,0,1);
 }
 
 

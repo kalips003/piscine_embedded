@@ -28,15 +28,16 @@ void timer_init_1s( void ) {
 
     OCR1A = STOP_1S;
 // set WGM mode 4: CTC, TOP=OCR1A, update: immediate, TOP
-    SET_WGM(0,1,0,0);
+    T1_SET_WGM(0,1,0,0);
 // prescaler 1024, start the timer
-    SET_CS_PRESCALER_256;
+    T1_SET_CS(1,0,0);
 }
 
 /////////////////////////////////////////////////////////////////////////////]
 int main( void )
 {
     uart_init();
+    timer_init_1s();
     interupt_init();
 
     while (1) {}

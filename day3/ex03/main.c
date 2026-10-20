@@ -1,9 +1,8 @@
-#include <stdint.h>
 #include <util/delay.h>
+
 #include "src/rgb.h"
 #include "src/logic.h"
 #include "src/uart.h"
-#include "src/tools.h"
 
 
 char    g_input_buffer[SIZE_MAX_BUFFER_INTPUT];

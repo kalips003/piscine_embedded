@@ -11,14 +11,16 @@ void init_rgb()
     OCR0B = 0;
     OCR2B = 0;
     OCR0A = 0;
-    SET_COM_T0A(1,0); // COM non-inverting (fast PWM)
-    SET_COM_T0B(1,0);
-    SET_COM_T2B(1,0);
-    SET_WGM_T0(0,1,1); // Fast PWM with TOP
-    SET_WGM_T2(0,1,1);
-//  start the timers
-    SET_CS_T0_PRESCALER_64;
-    SET_CS_T2_PRESCALER_64;
+// clear on match, set at BOTTOM (non-inverting) (fast PWM)
+    T0_SET_COMA(1,0);
+    T0_SET_COMB(1,0);
+    T2_SET_COMB(1,0);
+// Mode 3: Fast PWM - TOP:0xFF - Update:BOTTOM - clear-on:MAX
+    T0_SET_WGM(0,1,1);
+    T2_SET_WGM(0,1,1);
+//  Set prescaler 64 start the timers
+    T0_SET_CS(0,1,1);
+    T2_SET_CS(0,1,1);
 }
 void set_rgb(uint8_t r, uint8_t g, uint8_t b)
 {
