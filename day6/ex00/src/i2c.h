@@ -13,12 +13,6 @@
     #define I2C_FREQ 100000UL // 100kHz, "standard mode"
 #endif
 
-void i2c_init(void);
-void i2c_start(void);
-void i2c_stop(void);
-void i2c_write(unsigned char data);
-void i2c_read(void);
-
 /*/////////////////////////////////////////////////////////////////////////////]
 TWI = I2C
 1 bus line for clock: SCL (master generate clock)
@@ -46,19 +40,14 @@ TWCR	Controls the TWI peripheral, including START, STOP, enable and interrupt fl
 
 /*/////////////////////////////////////////////////////////////////////////////]
                                     I2C / TWI
-    Atmel calls it TWI (Two Wire Interface) to dodge the Philips trademark.
-    Same thing as I2C.
 
     2 wires, shared by everyone on the bus:
         SDA = PC4 (data)
         SCL = PC5 (clock, always driven by the master)
     Both are open-drain: devices can only pull the line LOW, a pull-up resistor
     brings it back HIGH. Nobody ever drives a 1 -> no short circuit if 2 talk.
-    (the board has its own pull-ups, no need for the internal ones)
 
     Once TWEN = 1 the TWI hardware owns PC4/PC5, DDRC/PORTC don't matter anymore.
-
-    A transaction (master = us, slave = AHT20):
 
     idle: SDA=1 SCL=1
      START   : SDA goes LOW while SCL is HIGH            (only the master does this)
@@ -77,7 +66,6 @@ TWCR	Controls the TWI peripheral, including START, STOP, enable and interrupt fl
     Rule: SDA only changes while SCL is LOW. SDA changing while SCL is HIGH
     is START or STOP, never data.
 *//////////////////////////////////////////////////////////////////////////////]
-
 
 
 /*/////////////////////////////////////////////////////////////////////////////]
@@ -102,6 +90,7 @@ TWCR	Controls the TWI peripheral, including START, STOP, enable and interrupt fl
 ----------------------------------------------------------------------------
 [TWCR] : TWINT - TWEA - TWSTA - TWSTO - TWWC - TWEN - – - TWIE
 ----------------------------------------------------------------------------
+    Enables TWI and starts operations:
 	Every action (start, send, receive, stop) = write TWCR, then wait TWINT.
 
 * TWINT : TWI Interrupt Flag. Set by hardware when the current job is done.
@@ -139,6 +128,7 @@ TWCR	Controls the TWI peripheral, including START, STOP, enable and interrupt fl
 ----------------------------------------------------------------------------
 [TWSR] : TWS7 - TWS6 - TWS5 - TWS4 - TWS3 - – - TWPS1 - TWPS0
 ----------------------------------------------------------------------------
+    Status codes and clock prescaler
 	What just happened on the bus (valid when TWINT = 1), + the prescaler.
 
 * TWS[7:3]  : status code. Mask out the prescaler bits: TWSR & 0xF8
@@ -169,12 +159,13 @@ TWCR	Controls the TWI peripheral, including START, STOP, enable and interrupt fl
 #define I2C_SET_PRESCALER(b1, b0) (TWSR = (TWSR & ~0b11) | ((b1<<TWPS1)|(b0<<TWPS0)))
 
 
-
 /*/////////////////////////////////////////////////////////////////////////////]
     # TWI Data Register
 ----------------------------------------------------------------------------
 [TWDR] : TWD7 - TWD6 - TWD5 - TWD4 - TWD3 - TWD2 - TWD1 - TWD0
 ----------------------------------------------------------------------------
+    Holds transmitted or received bytes
+
 	Transmit: the next byte to send (address SLA+R/W or data).
 	Receive : the last byte received.
 	Only writable while TWINT = 1 (else TWWC is set and nothing happens).
