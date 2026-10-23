@@ -1,0 +1,39 @@
+#include "uart.h"
+
+/////////////////////////////////////////////////////////////////////////////]
+/* USARTC Universal Synchronous Asynchronous Receiver Transmiter Control */
+void uart_init( void )
+{
+// set correct baud rate in UBRR0, and set double speed
+    SET_BAUDRATE_DOUBLE(UART_BAUDRATE);
+
+// UCSR0C: 8N1 mode: UMSEL0 [Asynchronous], UPM0 [parity disable], USBS0 [1 stop bit], UCSZ0 [011 = 8bit]
+    SET_FRAME_8N1;
+
+/* TXEN0: Transmitter enable: PD1 stops being a normal pin, it becomes TXD */
+    UART_TX_ON;
+}
+
+
+/////////////////////////////////////////////////////////////////////////////]
+/* send one char over uart */
+void uart_tx(char c)
+{
+// UCSR0A[UDRE0] = 1: UDR0 is empty, you can write
+// UCSR0A[UDRE0] = 0: busy, wait
+    UART_WAIT_SEND;
+
+// UDR0 = write register
+    UDR0 = c;
+}
+
+/////////////////////////////////////////////////////////////////////////////]
+void uart_printstr(const char* str)
+{
+    if (!str)
+        return ;
+    while (*str) {
+        uart_tx(*str);
+        str++;
+    }
+}
