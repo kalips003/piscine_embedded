@@ -13,6 +13,20 @@
     #define I2C_FREQ 100000UL // 100kHz, "standard mode"
 #endif
 
+void        i2c_init(void);
+void        i2c_start(void);
+void        i2c_stop(void);
+uint8_t     i2c_start_transmit(uint8_t addr, uint8_t read_write);
+uint8_t     i2c_write_better(uint8_t data);
+uint8_t     i2c_read_better(uint8_t last, uint8_t* data);
+
+void i2c_print_status();
+uint8_t i2c_start_better(void);
+
+void i2c_write(unsigned char data);
+void i2c_read(void);
+void print_hex_value(char c);
+
 /*/////////////////////////////////////////////////////////////////////////////]
 TWI = I2C
 1 bus line for clock: SCL (master generate clock)
@@ -155,7 +169,7 @@ TWCR	Controls the TWI peripheral, including START, STOP, enable and interrupt fl
 	    0xF8  TW_NO_INFO            nothing to report (TWINT = 0)
 	    0x00  TW_BUS_ERROR          illegal START/STOP on the bus
 *//////////////////////////////////////////////////////////////////////////////]
-#define I2C_STATUS (TWSR & 0xF8)
+#define I2C_STATUS (TWSR & 0xF8) // Mask out TWPS1:0
 #define I2C_SET_PRESCALER(b1, b0) (TWSR = (TWSR & ~0b11) | ((b1<<TWPS1)|(b0<<TWPS0)))
 
 
@@ -170,8 +184,8 @@ TWCR	Controls the TWI peripheral, including START, STOP, enable and interrupt fl
 	Receive : the last byte received.
 	Only writable while TWINT = 1 (else TWWC is set and nothing happens).
 *//////////////////////////////////////////////////////////////////////////////]
-#define SLA_W(addr) (((addr) << 1) | TW_WRITE)
-#define SLA_R(addr) (((addr) << 1) | TW_READ)
+#define START_WRITTING(addr) (((addr) << 1) | TW_WRITE)
+#define START_READING(addr) (((addr) << 1) | TW_READ)
 
 
 

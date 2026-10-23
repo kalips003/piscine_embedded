@@ -8,7 +8,7 @@
 
 uint8_t read_signature_byte(uint16_t address);
 void write_hexa(uint8_t num, char buff[2]);
-char* itoa(int16_t num, char* buff);
+char* itoa2(int16_t num, char* buff);
 
 
 #define SET_WRITING_PIN(register, pin) (register |= _BV(pin))

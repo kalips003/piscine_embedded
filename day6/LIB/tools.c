@@ -13,7 +13,7 @@ uint8_t wii_hex(char c)
     return 0;
 }
 
-uint8_t atoi_base_hex2(const char* hex)
+uint8_t atoi_base_hex(const char* hex)
 {
     return wii_hex(*hex) * 16 + wii_hex(*(hex+1));
 }
@@ -24,9 +24,9 @@ t_rgb read_rgb_hex(const char* hex)
     if (!hex || *hex != '#' || strlen(++hex) != 6)
         return rtrn;
 
-    rtrn.r = atoi_base_hex2(hex); hex +=2;
-    rtrn.g = atoi_base_hex2(hex); hex +=2;
-    rtrn.b = atoi_base_hex2(hex);
+    rtrn.r = atoi_base_hex(hex); hex +=2;
+    rtrn.g = atoi_base_hex(hex); hex +=2;
+    rtrn.b = atoi_base_hex(hex);
 
     return rtrn;
 }

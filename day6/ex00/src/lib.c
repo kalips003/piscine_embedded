@@ -41,7 +41,7 @@ void write_hexa(uint8_t num, char buff[2])
     buff[1] = hex_base[num & 0x0F];
 }
 
-char* itoa(int16_t num, char* buff)
+char* itoa2(int16_t num, char* buff)
 {
     uint8_t len = 1;
     int16_t tmp = num;
